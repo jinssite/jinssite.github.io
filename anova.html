@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="data-anal.css">
+  <title>ANOVA</title>
+</head>
+<body>
+<div class="banner">
+  <img src="anova.jpg" alt="banner" style="width: 100%;" />
+  <div class="banner-logo"><img src="logo82.jpg" alt="logo" style="width: 82px; height: 82px;" /><span class="logo-text">Jin's Site</span></div>
+  <div class="banner-title">ANOVA</div>
+</div>
+<div class="main-body">
+<h1><center>An Introduction to ANOVA</center></h1>
+<p>Analysis of variance, or ANOVA, is a statistical technique to find if there is significant difference or change between means of two or many comparison groups.</p>
+<p>There are various types of ANOVA tests, the common ones are: One-Way ANOVA, Two-Way ANOVA and N-Way ANOVA. One-Way ANOVA is used to test differences between groups based one independent variable. Two-Way ANOVA is used when there are two independent variables. N-Way ANOVA, you can guess from its name, is used when there are more than two independent variables.</p>
+<p>ANOVA tests the null hypothesis:
+<ul>
+<li>H<sub>0</sub>: All the sample means between groups are equal</li>
+</ul>
+The alternative hypothesis is:
+<ul>
+<li>H<sub>1</sub>: At least one of the sample means is different from other group</li>
+</ul>
+</p>
+<p>The formula for One-Way ANOVA is shown in ANOVA table as follows</p>
+<table width="600" border="1">
+  <tr>
+    <th>Source of Variation</td>
+    <th>Sum of Squares</td>
+    <th>Degree of Freedom</td>
+    <th>Mean Squares (MS)</td>
+    <th>F</td>
+  </tr>
+  <tr>
+    <th style="text-align:left">Between</th>
+    <td>
+      <math display>
+        <mi>SSB</mi>
+        <mo>=</mo>
+        <munderover>
+          <mo>Σ</mo>
+          <mrow><mi>j</mi><mo>=</mo><mn>1</mn></mrow>
+          <mi>k</mi>
+        </munderover>
+        <msub>
+          <mi>n</mi>
+          <mi>j</mi>
+        </msub>
+        <msup>
+          <mrow>
+            <mo>(</mo>
+            <msub>
+              <mi>X&#x0305;</mi>
+              <mi>j</mi>
+            </msub>
+            <mo>-</mo>
+            <mi>X&#x0305;</mi>
+            <mo>)</mo>
+          </mrow>
+          <mn>2</mn>
+        </msup>
+      </math>
+    </td>
+    <td>
+      <math>
+        <msub>
+          <mi>df</mi>
+          <mn>1</mn>
+        </msub>
+        <mo>=</mo>
+        <mi>k</mi>
+        <mo>-</mo>
+        <mn>1</mn>
+      </math>
+    </td>
+    <td>
+      <math>
+        <mi>MSB</mi>
+        <mo>=</mo>
+        <mfrac>
+          <mi>SSB</mi>
+          <msub>
+            <mi>df</mi>
+            <mn>1</mn>
+          </msub>
+        </mfrac>
+      </math>
+    </td>
+    <td>
+      <math>
+        <mi>F</mi>
+        <mo>=</mo>
+        <mfrac>
+          <mi>MSB</mi>
+          <mi>MSE</mi>
+        </mfrac>
+      </math>
+    </td>
+  </tr>
+  <tr>
+    <th style="text-align:left">Error</th>
+    <td>
+      <math>
+        <mi>SSE</mi>
+        <mo>=</mo>
+        <munderover>
+          <mo>Σ</mo>
+          <mrow><mi>j</mi><mo>=</mo><mn>1</mn></mrow>
+          <mi>k</mi>
+        </munderover>
+        <munderover>
+          <mo>Σ</mo>
+          <mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow>
+          <msub>
+            <mi>n</mi>
+            <mi>j</mi>
+          </msub>
+        </munderover>
+        <msup>
+          <mrow>
+            <mo>(</mo>
+            <msub>
+              <mi>X</mi>
+              <mrow><mi>i</mi><mi>j</mi></mrow>
+            </msub>
+            <mo>-</mo>
+            <msub>
+              <mi>X&#x0305;</mi>
+              <mi>j</mi>
+            </msub>
+            <mo>)</mo>
+          </mrow>
+          <mn>2</mn>
+        </msup>
+      </math>
+    </td>
+    <td>
+      <math>
+        <msub>
+          <mi>df</mi>
+          <mi>2</mi>
+        </msub>
+        <mo>=</mo>
+        <mi>n</mi>
+        <mo>-</mo>
+        <mi>k</mi>
+      </math>
+    </td>
+    <td>
+      <math>
+        <mi>MSE</mi>
+        <mo>=</mo>
+        <mfrac>
+          <mi>SSE</mi>
+          <msub>
+            <mi>df</mi>
+            <mi>2</mi>
+          </msub>
+        </mfrac>
+      </math>
+    </td>
+  </tr>
+  <tr>
+    <th style="text-align:left">Total</th>
+    <td>
+      <math>
+        <mi>SST</mi>
+        <mo>=</mo>
+        <munderover>
+          <mo>Σ</mo>
+          <mrow><mi>j</mi><mo>=</mo><mn>1</mn></mrow>
+          <mi>k</mi>
+        </munderover>
+        <munderover>
+          <mo>Σ</mo>
+          <mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow>
+          <msub>
+            <mi>n</mi>
+            <mi>j</mi>
+          </msub>
+        </munderover>
+        <msup>
+          <mrow>
+            <mo>(</mo>
+            <msub>
+              <mi>X</mi>
+              <mrow><mi>i</mi><mi>j</mi></mrow>
+            </msub>
+            <mo>-</mo>
+             <mi>X&#x0305;</mi>
+            <mo>)</mo>
+          </mrow>
+          <mn>2</mn>
+        </msup>
+      </math>
+    </td>
+    <td>
+      <math>
+        <mi>df</mi>
+        <mo>=</mo>
+        <mi>n</mi>
+        <mo>-</mo>
+        <mn>1</mn>
+      </math>
+    </td>
+  </tr>
+</table>
+<dl>
+  <dt>where</dt>
+  <dd><math><msub><mi>X</mi><mrow><mi>i</mi><mi>j</mi></msub></math> is individual observation.</dd>
+  <dd><math><msub><mi>X&#x0305;</mi><mi>j</mi></msub></math> is sample mean of the j<sup>th</sup> group.</dd>
+  <dd><math><mi>X&#x0305;</mi></math> is overall sample mean.</dd>
+  <dd><math><mi>k</mi></math> is the number of independent comparison group.</dd>
+  <dd><math><msub><mi>n</mi><mi>j</mi></msub></math> is the number of observations or sample size in j<sup>th</sup> group.</dd>
+  <dd><math><mi>n</mi></math> is total number of observations or total sample size.</dd>
+</dl>
+<p>F is the ratio of the mean squares between groups (MSB) to the mean squares error (MSE). Another way to look at this is</p>
+<ul style="list-style-type:none;"><li>F = Variation of sample means between groups / Variation within samples</li></ul>
+<p>F ratio is used to determine if we shall accept or reject null hypothesis. Under the null hypothesis, the two variations are expected to be roughly equal which produces F-statistic close to 1. A larger F ratio indicates the variation between sample means is greater than the variation within the samples thus, an indication of the evidence that there is a difference between the group means.
+</p>
+<p>There are three important ANOVA assumptions:
+<ul>
+<li>Independent of observations: There is no hidden relationships among observations.</li>
+<li>Normally-distributed: The values of the dependent variable follow normal distribution.</li>
+<li>Homogeneity of variance: The variances among the comparison groups are same.</li>
+</ul>
+</p>
+<p>Under these assumptions, the F ratio follows F statistic distribution. With the distribution, we can calculate the probability of observing an F-statistic that is at least as high as the value we obtained. This probability is known as the p-value and is the probability that we reject the null hypothesis when it is true.</p>
+<p>Usually we need a small p-value to safely reject the null hypothesis. A typical level used is 0.05, which means, on average, a 1 in 20 chance that we reject the null hypothesis when it is in fact true.</p>
+<p class="comments"><iframe src="https://docs.google.com/forms/d/e/1FAIpQLScwccPtS-BgcFogAjpXijWl4MOvACF1wbCMYSyzw4-aIGRRdQ/viewform?embedded=true" width="640" height="500" frameborder="0" marginheight="0" marginwidth="0">Loading…</iframe></p>
+<div>
+<a href="index.html" class="page-prev">&lt; Previous</a> <a href="using-anova.html" class="page-next">Next &gt;</a>
+</div>
+</div>
+</body>
+</html>

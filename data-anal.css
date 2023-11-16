@@ -1,0 +1,79 @@
+.banner {
+  position: relative;
+}
+
+.banner-logo {
+  color: white;
+  font-size: 1.5em;
+  position: absolute;
+  top: 0px;
+  left: 0px;
+}
+
+.logo-text {
+  vertical-align: 55px;
+}
+
+.banner-title {
+  color: deepskyblue;
+  font-size: 5em;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.main-body {
+  margin: 0% 5% 5% 5%;
+}
+
+.comments {
+  text-align: center;
+}
+
+.page-prev {
+  padding: 5px 10px;
+  font-size: 1em;
+  border-radius: 5px;
+  color: white;
+  background-color: Teal;
+  float: left;
+  text-decoration: none;
+}
+
+.page-next {
+  padding: 5px 10px;
+  font-size: 1em;
+  border-radius: 5px;
+  color: white;
+  background-color: Teal;
+  float: right;
+  text-decoration: none;
+}
+
+.image-w-text {
+  position: relative;
+  display:inline-block;
+}
+
+.image-text {
+  color: blue;
+  font-size: 2em;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.text-button {
+  border: none;
+  background: none;
+  color: blue;
+  padding: 0px;
+}
+
+#table-v, #table-h, #clear {
+  border:2px solid rgba(0, 0, 0, 0);
+}
