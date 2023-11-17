@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="data-anal.css">
+  <title>Using ANOVA</title>
+  <script src="StatFunc.js"></script>
+</head>
+<body>
+<div class="banner">
+  <img src="anova.jpg" alt="banner" style="width: 100%;" />
+  <div class="banner-logo"><img src="logo82.jpg" alt="logo" style="width: 82px; height: 82px;" /><span class="logo-text">Jin's Site</span></div>
+  <div class="banner-title">Using ANOVA</div>
+</div>
+<div class="main-body">
+<h1><center>Using ANOVA in Data Analysis</center></h1>
+<div>
+<p>In this page we will show you how to use ANOVA to analyze the data. You can also copy your own data to this page and perform the ANOVA test.</p>
+<table>
+<tr>
+<td style="-webkit-text-size-adjust: none">
+<ul style="margin-bottom: 0px; padding-left: 1.2em">
+<li style="margin-bottom: 0px;">Data can be arranged either <img src="table-h.png"/><button class="text-button" onClick="clickData(0)"><u>horizontally</u></button> or <img src="table-v.png"/><button class="text-button" onClick="clickData(1)"><u>vertically</u></button></li>
+<li>Delimit data by same letter except '+'. '-', '.', 'e' and 'E'</li>
+<li>Use "none" for missing value if delimiter is white space</li>
+<li><img src="table-c.png"/>Clear old data before copy</li>
+</ul>
+</td>
+<td style="padding-left: 10px"><strong>Table View</strong></td>
+</tr>
+<tr>
+<td id="text-area">
+<textarea id="your-data" name="your-data" contenteditable="true" rows="11" cols="80" wrap="off" title="Copy your data here and click ANOVA" style="border:double 4px gray; resize:none; overflow-x:auto;" oninput="changeTextArea()" onchange="changeTextArea()"></textarea>
+</td>
+<td style="padding-left: 10px; vertical-align: top">
+<div id="text-table" style="overflow: auto">
+<table id="table-view" border="1px" cellpadding="4px" style="border-collapse: collapse"></table>
+</div>
+</td>
+</tr>
+<tr>
+<td id="data-error" style="color:red;"></td>
+</tr>
+<tr>
+<td>
+<img src="table-v.png" id="table-v" title="vertical table" onclick="clickOrient('table-v');"/>
+<img src="table-h.png" id="table-h" title="horizontal table" onclick="clickOrient('table-h');"/>
+<img src="table-c.png" title="clear" onclick="(() => {document.getElementById('your-data').value = ''; changeTextArea();})();"/>
+<button type="button" style="float: right;" onclick="clickANOVA()">ANOVA</button>
+<input type="number" step="0.01" min="0" max="1" style="float:right; margin-right: 5px; width: 50px" id="alpha" value="0.05"></input>
+<label for="alpha" style="float:right">&alpha;&nbsp;=&nbsp;</label></td>
+</tr>
+</table>
+</div>
+<div id="anova-charts"></div>
+<div id="anova-div"></div>
+<div id="post-hoc"></div>
+<p class="comments"><iframe src="https://docs.google.com/forms/d/e/1FAIpQLSerA-U3BCBRtsrdkySiJlNmBDPRQknP4NIOCTaqvvhuVejsdA/viewform?embedded=true" width="640" height="550" frameborder="0" marginheight="0" marginwidth="0">Loading…</iframe></p>
+<div>
+<a href="anova.html" class="page-prev">&lt; Previous</a>
+</div>
+</div>
+<script>
+const sampleData = [
+`Group_1, 3.7, 5.4, 6.7, 6.3, 4.3, 5.3, 4.4, 6. , 3.9, 6.4, 6.1, 6.1, 5.4, 5. , 6.2, 7.4, 3. , 4.7, 6.9, 4.3
+Group_2, 4.4, 6.8, 7. , 9.3, 6.5, 6.4, 5.4, 6.8, 5.1, 4.9, 4.1, 5.3, 5.8, 5.5, 6.4, 5.9, 6. , 5.9, 5.2, 5.9
+Group_3, 9.1, 6.8, 6.7, 9.1, 8.4, 9.7, 9.1, 8.9, 7.6, 8.1, 8.6, 7.3, 9.7, 10., 8.9, 8.5, 8.4, 9.1, 8.4, 8.8
+Group_4, 8.2, 6.3, 9.7, 6.1, 8.9, 7. , 5.5, 6.5, 5.4, 8.7, 6.1, 8. , 6.4, 6.6, 7.1, 7. , 7.4, 8.6, 7.9, 8.`,
+`Group_1	Group_2	Group_3	Group_4
+3.7	4.4	9.1	8.2
+5.4	6.8	6.8	6.3
+6.7	7	6.7	9.7
+6.3	9.3	9.1	6.1
+4.3	6.5	8.4	8.9
+5.3	6.4	9.7	7
+4.4	5.4	9.1	5.5
+6	6.8	8.9	6.5
+3.9	5.1	7.6	5.4
+6.4	4.9	8.1	8.7
+6.1	4.1	8.6	6.1
+6.1	5.3	7.3	8
+5.4	5.8	9.7	6.4
+5	5.5	10	6.6
+6.2	6.4	8.9	7.1
+7.4	5.9	8.5	7
+3	6	8.4	7.4
+4.7	5.9	9.1	8.6
+6.9	5.2	8.4	7.9
+4.3	5.9	8.8	8`];
+const textArea = document.getElementById("text-area");
+const textTable = document.getElementById("text-table");
+const yourData = document.getElementById("your-data");
+if (textArea.offsetWidth > 0.9 * document.body.clientWidth) {
+  let cols = Math.trunc(72 * document.body.clientWidth / textArea.offsetWidth);
+  yourData.cols = (cols < 30 ? 30 : cols);
+  textArea.width = "1%";
+}
+textTable.style.width = document.body.clientWidth - textArea.offsetWidth - 30 + 'px';
+textTable.style.height = textArea.offsetHeight + 'px';
+yourData.value = sampleData[0];
+let tableOrient;
+clickANOVA();
+
+function clickOrient(id) {
+  if (tableOrient == undefined) {
+    document.getElementById(id).style.border = "2px solid red";
+    tableOrient = id;
+    return;
+  }
+  if (id == tableOrient) {
+    document.getElementById(id).style.border = "2px solid rgba(0, 0, 0, 0)";
+    tableOrient = undefined;
+    return;
+  }
+  document.getElementById(tableOrient).style.border = "2px solid rgba(0, 0, 0, 0)";
+  document.getElementById(id).style.border = "2px solid red";
+  tableOrient = id;
+}
+
+function changeTextArea() {
+  if (tableOrient == undefined) return;
+  tableOrient = undefined;
+  document.getElementById("table-v").style.border = "2px solid rgba(0, 0, 0, 0)";
+  document.getElementById("table-h").style.border = "2px solid rgba(0, 0, 0, 0)";
+  document.getElementById("table-view").innerHTML = "";
+  document.getElementById("anova-charts").innerHTML = 'You can use our sample data by clicking <button class="text-button" onClick="clickData(0)"><u>here</u></button> or copy your data to run ANOVA.';
+  document.getElementById("anova-div").innerHTML = "";
+}
+
+function clickData(seq) {
+  changeTextArea();
+  document.getElementById("your-data").value = sampleData[seq];
+  clickANOVA();
+}
+
+function clickANOVA() {
+  const err = document.getElementById("data-error");
+  err.innerHTML = "";
+  let data = document.getElementById("your-data").value;
+  data = data.split(/[\r\n]+/);
+  for (let i = 0; i < data.length; ++ i) data[i] = data[i].trim();
+  if (data.length < 2) {
+    err.innerHTML = "Error: Not enough data. Must have at least 2 groups and 2 data points in each group.";
+    return;
+  }
+  let re = /^(?:[+-]\s*)?(?:\d+(?:[.]\d*)?|[.]\d+)(?:e[+-]?\d+)?$|^none$/i;  // number or none
+  let delimiter;
+  for (let i = 1; i < data.length; ++ i) {
+    if (data[i] == "") continue;
+    delimiter = /\s+/; // Try white space first
+    let fields = data[i].split(delimiter);
+    let count = 0;
+    if (fields[0].match(re)) ++ count;
+    for (let j = 1; j < fields.length; ++ j) {
+      if (fields[j].match(re)) {
+        ++ count;
+      } else {
+        if (j != fields.length - 1 || fields[j] != "") {
+          count = 0;
+          break;
+        }
+      }
+    }
+    if (count < 2) { // There is no 2 numbers where delimiter is white space. Try other letter
+      let s = data[i].replace(/(?:[+-]\s*)?(?:\d+(?:[.]\d*)?|[.]\d+)(?:e[+-]?\d+)?|none/gi, "");
+      s = s.replace(/\s+/g, "");
+      delimiter = new RegExp("\\s*" + s.substr(-1) + "\\s*"); // Try the last letter as delimiter after taking out numbers and white space
+      fields = data[i].split(delimiter);
+      count = 0;
+      if (fields[0].match(re)) ++ count;
+      for (let j = 1; j < fields.length; ++ j) {
+        if (fields[j] == "" || fields[j].match(re)) {
+          ++ count;
+        } else {
+          count = 0;
+          break;
+        }
+      }
+    }
+    if (count < 2) {
+      err.innerHTML = "Error: Line " + (i + 1) + " does not have 2 numbers. Data must have at least 2 groups and 2 data points in each group."
+      return;
+    } else {
+      break;
+    }
+  }
+  let vertical;
+  if (vertical == undefined) {
+    fields = data[0].split(delimiter); // Try first line to see if it is header line
+    count = 0;
+    for (f of fields) {
+      if (f != "" && ! f.match(re)) ++ count;
+    }
+    if (count > 1 || count == 1 && fields[0].match(re)) vertical = true;
+  }
+  if (vertical && tableOrient == "table-h") {
+    err.innerHTML = "Error: The table is vertical but you set it as horizontal. Is the setting wrong?";
+    return;
+  }
+  if (tableOrient != undefined && vertical == undefined) {
+    vertical = (tableOrient == "table-h" ? false : true);
+  }
+  let header = [];
+  let anova = [];
+  let row = 0;
+  if (vertical) {
+    header = data[0].split(delimiter);
+    if (header[header.length - 1] == "") header.pop();
+    for (let i = 0; i < header.length; ++ i) anova.push([]);
+    row = 1;
+  }
+  for (let i = row; i < data.length; ++ i) {
+    if (data[i] == "") continue;
+    fields = data[i].split(delimiter);
+    let col = 0;
+    if (vertical) {
+      if (fields.length > header.length && fields[fields.length - 1] == "") fields.pop();
+      if (fields.length > header.length) {
+        err.innerHTML = "Error: Line " + (i + 1) + " has more fields than the header line.";
+        return;
+      } else if (fields.length < header.length) {
+        err.innerHTML = "Error: Line " + (i + 1) + " has fewer fields than the header line.";
+        return;
+      }
+    } else {
+      header.push(fields[0]);
+      if (vertical == undefined && ! fields[0].match(re)) vertical = false;
+      if (fields[fields.length - 1] == "") fields.pop();
+      anova.push([]);
+      col = 1;
+    }
+    for (let j = col; j < fields.length; ++ j) {
+      if (fields[j] != "" && ! fields[j].match(re)) {
+        err.innerHTML = "Error: Line " + (i + 1) + " field " + (j + 1) + " is not a number.";
+        return;
+      }
+      if (fields[j].toLowerCase() == "") fields[j] = "none";
+      if (vertical) {
+        anova[j].push(Number(fields[j]));
+      } else {
+        anova[row].push(Number(fields[j]));
+      }
+    }
+    if (! vertical) ++ row;
+  }
+  if (vertical == undefined) {
+    err.innerHTML = "Error: Cannot find the table header. Please set if this is a vertical or horizontal table.";
+    return;
+  }
+  tableOrient = (vertical ? "table-v" : "table-h");
+  document.getElementById(tableOrient).style.border = "2px solid red";
+
+  let alpha = document.getElementById("alpha").value;
+  if (alpha == "") {
+    alpha = 0.05;
+    document.getElementById("alpha").value = 0.05;
+  }
+
+  let tableData = {'data': anova, 'vertical': vertical};
+  if (vertical) tableData['colHeader'] = header;
+  else tableData['rowHeader'] = header;
+  const tableView = new StatGrid(document.getElementById("table-view"), tableData);
+
+  for (let i = 0; i < anova.length; ++ i) {
+    anova[i] = anova[i].filter((item) => ! isNaN(item));
+  }
+  const anovaResult = StatFunc.anova(anova);
+  if (anovaResult != undefined) {
+    document.getElementById("anova-div").innerHTML = '<p><table id="anova-table" border="1px" cellpadding="4px"></table><br>' + (anovaResult[0][4] < alpha ? "Since p-value is less than &alpha; = " + alpha + " the null hypothesis is rejected and we conclude that there is a statistically significant difference between the means of the groups." : "Since p-value is not less than &alpha; = " + alpha + " the null hypothesis is failed to be rejected and we conclude that there is no sufficient evidence to say that there is a statistically significant difference between the means of the groups.") + '</p>';
+    const anovaTable = new StatGrid(document.getElementById("anova-table"), {'caption': '<strong>ANOVA Table</strong>', 'colHeader': ['Source of Variation', 'Sum of Squares', 'Degree od Freedom', 'Mean Squares (MS)', 'F', 'p-value'], 'rowHeader': ['Between', 'Error', 'Total'], 'data': anovaResult, 'vertical': false, 'precision' : 5});
+  }
+
+  const charts = document.getElementById('anova-charts');
+  const canvasWidth = (document.body.clientWidth > 430 ? 400 : document.body.clientWidth - 30);
+  charts.innerHTML = '<p><canvas id="boxplot" width="' + canvasWidth + 'px" height="300px" style="border:1px solid lightgray"></canvas><span style="margin-left: 5px"></span><canvas id="probplot" width="' + canvasWidth + 'px" height="300px" style="border:1px solid lightgray"></canvas></p>';
+  let ctx = document.getElementById("boxplot").getContext("2d");
+  let plotdata = {'labels': header,
+                  'datasets': [{
+                    'data': anova,
+                  },]
+                 };
+  let cfg = {'type': 'boxplot',
+             'data': plotdata,
+             'options': {'title': {'text': 'Box Plot'}},
+            };
+  const boxplot = new StatChart(ctx, cfg);
+  ctx = document.getElementById("probplot").getContext("2d");
+  cfg = {'type': 'probability',
+         'data': plotdata,
+         'options': {'title': {'text': 'Normal Distribution Probability Plot'}},
+        };
+  const probplot = new StatChart(ctx, cfg);
+}
+</script>
+</body>
+</html>
