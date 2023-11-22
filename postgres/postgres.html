@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <link rel="stylesheet" href="../data-anal.css">
-  <title>Build PostgreSQL Database</title>
+  <title>PostgreSQL Database</title>
 </head>
 <body>
 <div class="banner">
@@ -41,7 +41,7 @@ base        pg_commit_ts  pg_hba.conf  pg_logical     pg_notify     pg_serial   
 <li>table (index, view, sequence, function, ...): The primary structure that stores the data.</li>
 </ul></p>
 <p>The object hierarchies form the logical structure of PostgreSQL database as shown below:</p>
-<img src="Postgresql Structure.jpg" />
+<img src="Postgresql Structure.jpg" style="max-width: 100%;" />
 <p>All objects in PostgreSQL are managed by their object identifiers (OIDs). The objects are stored in the tablespaces. The tablespace defines the location where PostgreSQL places the physical files of the database objects.</p>
 <p>Two default tablespaces are automatically created by initdb: pg_global and pg_default. The pg_global is located at directory $PGDATA/global and the pg_default is at $PGDATA/base.</p>
 <p>The pg_global tablespace is used for shared system catalogs. The pg_default tablespace is the default tablespace of the template1, template0 and postgres databases. Let's connect to the default postgres database and have a look of these two tablespaces:</p>
