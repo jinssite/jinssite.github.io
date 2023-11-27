@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="../data-anal.css">
+  <title>Add PostgreSQL to Codespace</title>
+</head>
+<body>
+<div class="banner">
+  <img src="../anova.jpg" alt="banner" style="width: 100%;" />
+  <div class="banner-logo"><img src="../logo82.jpg" alt="logo" style="width: 82px; height: 82px;" /><span class="logo-text">Jin's Site</span></div>
+  <div class="banner-title">Codespace - PostgreSQL</div>
+</div>
+<div class="main-body">
+<h1><center>Add PostgreSQL to Codespace</center></h1>
+<p>GitHub codespace is a development environment that is hosted in the cloud and accessible remotely, directly from a web browser. There is no longer a need to set up your own complex local environment. It is easy to use prebuilt templates to build codespaces and to quickly start new projects from codespaces. However, the prebuilt codespace may be lack of some packages that you may need for the projects. One example is the prebuilt Blank template, which includes many tools but not PostgreSQL, a popular relational database management system (RDBMS) used in many projects. In this article we will show you three methods to add PostgreSQL into the codespace. The similar procedure can be used to add other packages to codespace also.</p>
+<h2>Install PostgreSQL Directly to Codespace</h2>
+<p>First, from Your Codespaces, use Blank template to build a codespace. This builds an Ubuntu 20.04 environment with runtimes and tools like Python, Node.js and Docker. To install PostgreSQL to the system, you can</p>
+<pre><code>$ sudo apt-get update
+$ sudo apt-get install postgresql</code></pre>
+<p>The first command updates the package list. This ensures that the latest installation package is used. The second command installs the PostgreSQL package from Ubuntu default repository, which is PostgreSQL version 12. If this is not the version you want, you can use the <a href="https://apt.postgresql.org">PostgreSQL Apt Repository</a> to install other versions.</p>
+<p>To start the PostgreSQL server from the directory, those familiar with Linux may expect to use command "systemctl start postgresql" to start the service managed by systemd. However, systemd has overhead and is generally not run in the Docker container used by the codespace. Instead, we start the server from the service command</p>
+<pre><code>$ sudo service postgresql start</code></pre>
+<p>By default, PostgreSQL client connects to the server using port 5432. Click PORTS tab and Forward a Port</p>
+<img src="forwardport.jpg" style="max-width: 100%" />
+<p>After all these have been done, we can use PostgreSQL client porgram psql to connect to the server. By default, PostgreSQL uses peer authentication for local connection. It uses the client's operating system user name as the allowed database user name. The database username from the installation is postgres. So we have to use postgres user account (already created from the installation) to run psql:</p>
+<pre><code>$ sudo su - postgres
+$ psql
+postgres=# select version();
+                                                                version                                                                 
+----------------------------------------------------------------------------------------------------------------------------------------
+ PostgreSQL 12.16 (Ubuntu 12.16-0ubuntu0.20.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 9.4.0-1ubuntu1~20.04.1) 9.4.0, 64-bit
+(1 row)
+
+postgres=# show data_directory;
+       data_directory        
+-----------------------------
+ /var/lib/postgresql/12/main
+(1 row)
+
+postgres=# \db+
+                                  List of tablespaces
+    Name    |  Owner   | Location | Access privileges | Options |  Size  | Description 
+------------+----------+----------+-------------------+---------+--------+-------------
+ pg_default | postgres |          |                   |         | 23 MB  | 
+ pg_global  | postgres |          |                   |         | 623 kB | 
+(2 rows)
+
+postgres=# \l
+                              List of databases
+   Name    |  Owner   | Encoding | Collate |  Ctype  |   Access privileges   
+-----------+----------+----------+---------+---------+-----------------------
+ postgres  | postgres | UTF8     | C.UTF-8 | C.UTF-8 | 
+ template0 | postgres | UTF8     | C.UTF-8 | C.UTF-8 | =c/postgres          +
+           |          |          |         |         | postgres=CTc/postgres
+ template1 | postgres | UTF8     | C.UTF-8 | C.UTF-8 | =c/postgres          +
+           |          |          |         |         | postgres=CTc/postgres
+(3 rows)
+</code></pre>
+<p>We checked the PostgreSQL version, database cluster directory, default tablespaces and databases created from the installation. All look good.</p>
+<p>If you need to use a user other than postgres to access the database, you can modify the file pg_hba.conf or pg_ident.conf to change the authentication roles or user mappings. Both files are at /etc/postgresql/12/main directory.</p>
+<p>The database cluster is at subdirectory 12/main under postgres user home (/var/lib/postgresql). From here, you can use it for your application or, if you prefer to build your own database cluster, check out <a href="postgres.html">our next article</a>.</p>
+<h2>Build A New Template That Includes PostgreSQL</h2>
+<p>Above method could be OK if we only build codespace once. However, if we need such codespace multiple times for different projects, it would be tedious to repeat this kind of work every time. A better solution is creating a new template with PostgreSQL included.</p>
+<p>We need two configuration files for the template:
+<ul>
+<li>.devcontainer/Dockerfile</li>
+<li>.devcontainer/devcontainer.json</li>
+</ul>
+We put them in a GitHub repository</p>
+<img src="template.jpg" style="max-width: 100%;" />
+<p>Here we name the repository as codespaces-blank-postgresql, an indication that it is from prebuilt Blank template and includes PostgreSQL.</p>
+<p>The GitHub codespace is based on the Microsoft VSCode product and uses a Docker container as the development environment. The container is created based on configuration defined in the devcontainer.json file. And the Dockerfile specifies how to build the Docker container.</p>
+<p>Let's have a look of both files.</p>
+<h3>Dockerfile</h3>
+<pre><code><linenum>1</linenum>	FROM mcr.microsoft.com/devcontainers/universal:2
+<linenum>2</linenum>
+<linenum>3</linenum>	RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
+<linenum>4</linenum>	    && apt-get -y install --no-install-recommends postgresql</code></pre>
+<p>The first line uses FROM command to select prebuilt Blank template image as the base image for our template. The third line runs the similar apt-get command as in the first method to install PostgreSQL. If you need more packages, you can add them into the installation list as well.</p>
+<p>This is a simple Dockerfile. For more detail on the file format, refer to <a href="https://docs.docker.com/engine/reference/builder/">Dockerfile reference</a>.</p>
+<h3>devcontainer.json</h3>
+<pre><code><linenum>1</linenum>	{
+<linenum>2</linenum>	    "name": "ubuntu-postgresql",
+<linenum>3</linenum>	    "build": {
+<linenum>4</linenum>	        "dockerfile": "Dockerfile"
+<linenum>5</linenum>	    },
+<linenum>6</linenum>	    "forwardPorts": [5432],
+<linenum>7</linenum>	    "postStartCommand": "sudo service postgresql start"
+<linenum>8</linenum>	}</code></pre>
+<p>The "dockerfile" defines the path of the Dockerfile relative to devcontainer.json. The Dockerfile is used to build the Docker container. We use "forwardPorts" to forward port 5432 that is used by the client-server communication and "postStartCommand" to start the PostgreSQL server. With this configuration we do not need to manually set them up as in the first method. For detail of devcontainer.json file, refer to <a href="https://containers.dev/implementors/json_reference">dev container specification document</a>.</p>
+<p>Once the two files are created, from repository, click on Code and then "+" sign and select Create a codespace on main.</p>
+<img src="codespace.jpg" style="max-width: 100%" />
+<p> This will start to create the codespace. After a while when the codespace is created, from terminal window, switch to postgres user and run psql. You can see it is exactly same as what we have from the first method.</p>
+<h2>Install PostgreSQL from Development Container Features</h2>
+<p>Instead of using apt-get, we can use Development Container Features to add more tools, runtimes and libraries into our development container. From our Blank codespace, to see the feature list, click lower-left codespaces button and select Add Dev Container Configuration Files...</p>
+<img src="features.jpg" style="max-width:100%">
+<p>Select Modify your active configuration...</p>
+<img src="feature1.jpg" style="max-width:100%">
+<p>Scroll the list to find features with PostgreSQL. As an example, we select PostgreSQL (via asdf) and then click the green OK button</p>
+<img src="feature2.jpg" style="max-width:100%">
+<p>Here is how the devcontainer.json file looks like after adding the feature:</p>
+<pre><code>{
+	"image": "mcr.microsoft.com/devcontainers/universal:2",
+	"features": {
+		"ghcr.io/devcontainers-contrib/features/postgres-asdf:1": {}
+	},
+	"forwardPorts": [5432],
+	"postStartCommand": "sudo su - codespace -c \"~/.asdf/shims/pg_ctl start\""
+}</code></pre>
+<p>The feature postgres-asdf has been added. We also add "forwardPorts" to forward the port 5432 and "postStartCommand" to start the PostgreSQL server. It will install PostgreSQL version 16, which provides a command, pg_ctl, to start the server.</p>
+<p>Click lower-left Codespaces button again and select Rebuild Container</p>
+<img src="feature3.jpg" style="max-width:100%">
+<p>Once the codespace is up and running, use psql command to check the database:</p>
+<pre><code>$ psql -d postgres -U postgres
+postgres=# select version();
+                                                version                                                
+-------------------------------------------------------------------------------------------------------
+ PostgreSQL 16.1 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 9.4.0-1ubuntu1~20.04.2) 9.4.0, 64-bit
+(1 row)
+
+postgres=# show data_directory;
+                  data_directory                   
+---------------------------------------------------
+ /home/codespace/.asdf/installs/postgres/16.1/data
+(1 row)
+
+postgres=# \db+
+                                  List of tablespaces
+    Name    |  Owner   | Location | Access privileges | Options |  Size  | Description 
+------------+----------+----------+-------------------+---------+--------+-------------
+ pg_default | postgres |          |                   |         | 22 MB  | 
+ pg_global  | postgres |          |                   |         | 565 kB | 
+(2 rows)
+
+postgres=# \l
+                                                   List of databases
+   Name    |  Owner   | Encoding  | Locale Provider | Collate | Ctype | ICU Locale | ICU Rules |   Access privileges   
+-----------+----------+-----------+-----------------+---------+-------+------------+-----------+-----------------------
+ postgres  | postgres | SQL_ASCII | libc            | C       | C     |            |           | 
+ template0 | postgres | SQL_ASCII | libc            | C       | C     |            |           | =c/postgres          +
+           |          |           |                 |         |       |            |           | postgres=CTc/postgres
+ template1 | postgres | SQL_ASCII | libc            | C       | C     |            |           | =c/postgres          +
+           |          |           |                 |         |       |            |           | postgres=CTc/postgres
+(3 rows)</code></pre>
+<p>The PostgreSQL package is installed in .asdf subdirectory under the user home (in our case, /home/codespace). The database cluster directory is at ~/.asdf/installs/postgres/16.1/data. You can move this directory to other location and use PGDATA environment or -D option to point to the new location. You can also follow our next article to <a href="postgres.html">build your own database cluster</a> for your applications.
+<footer>
+<p>&copy; 2023 Jin's Site. All Rights Reserved. <a href="https://jinssite.github.io">https://jinssite.github.io</a></p>
+</footer>
+<div>
+<a href="postgres.html" class="page-next">Next &gt;</a>
+</div>
+</div>
+</body>
+</html>
