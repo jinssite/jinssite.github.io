@@ -57,7 +57,7 @@ mydb=# \di+
 (2 rows)</code></pre>
 There are two tables created along with two indexes built for the primary keys.</p>
 <p>We will use a Python script to fill the tables. Python has various database drivers for PostgreSQL. We will use psycopg2. The psycopg2 database adapter implemented in C as a wrapper of PostgreSQL library libpq. It is probably the most popular and widely-used one for Python. If you do not have it installed, you can install it like 
-<pre><code>pip install psycopg2</code></pre>
+<pre><code>$ pip install psycopg2</code></pre>
 <p>Here is the Python script:
 <pre><code>from psycopg2 import connect, Error
 from urllib.request import urlopen
@@ -142,11 +142,11 @@ if __name__ == "__main__":
     main()
 </code></pre></p>
 <p>The script uses Yahoo Finance API to retrieve stock data in CSV format. It retrieves 1-year of stock data for the new added symbol or updates its data to the current. We manage the database transactions by with statement - If an exception happen within the with statement, it rolls back the whole transations. On success, however, different versions of psycopg2 have different behaviors. The newer version commits the transactions and the old version (before version 2.5) does nothing. To handle both cases, we call commit() if some records have been inserted. Note that the "with conn" statement does not close the connection (this behavior is changed in psycopg3), so we can use the same connection in multiple calls of with statement.</p>
-<p>We use prepared statement in daily data insertion. This saves time from parsing SQL statement each time when there are many records inserted into the table (e.g., when inserting 1-year of data). There are more performance improvement we could do. Note that we call execute() to insert row by row into stocks_daily table. This could cause a lot of roundtrip networking to the database server. To reduce the number of round trips, we can read multiple lines from CSV data and use execute_batch() to insert them in one call. The fatest way is to use copy_from() but it needs a file-like object as data source (psycopg3 has changed this with a new method - copy). For our example, the performance may not be a real concern since we only retrieve 1-year of data in the beginning and most time we just fetch few records during updates.</p>
+<p>We use prepared statement in daily data insertion. This saves time from parsing SQL statement each time when there are many records inserted into the table (e.g., when inserting 1-year of data). There are more performance improvements we could do. Note that we call execute() to insert row by row into stocks_daily table. This could cause a lot of roundtrip networking to the database server. To reduce the number of round trips, we can read multiple lines from CSV data and use execute_batch() to insert them in one call. The fatest way is to use copy_from() but it needs a file-like object as data source (psycopg3 has changed this with a new method - copy). For our example, the performance may not be a real concern since we only retrieve 1-year of data in the beginning and most time we just fetch few records during updates.</p>
 <p>Let's use the script to get the stock data of Google:
 <pre><code>$ python ./load_stock_data.py GOOG
 $ psql -d mydb
-mydb-# select * from stocks_daily;
+mydb-# SELECT * FROM stocks_daily WHERE symbol = 'GOOG';
  symbol |    date    |  open   |  close  |  high   |   low   |    volume     
 --------+------------+---------+---------+---------+---------+---------------
  GOOG   | 2022-12-05 |  99.815 |   99.87 |  101.75 |  99.355 |   1.99555e+07
@@ -160,7 +160,7 @@ mydb-# select * from stocks_daily;
 </code></pre>
 We have retrieved 1-year of Google stock data plus one day's of current time, total 252 rows. Since we are running the script during the trading time, we can run the script one more time to update the data:
 <pre><code>$ python ./load_stock_data.py
-mydb=# select * from stocks_daily order by date desc limit 3;
+mydb=# SELECT * FROM stocks_daily WHERE symbol = 'GOOG' ORDER BY date DESC LIMIT 3;
  symbol |    date    |  open   | close  |   high   |   low   |    volume    
 --------+------------+---------+--------+----------+---------+--------------
  GOOG   | 2023-12-05 |  130.37 | 131.93 | 132.3499 |  129.73 | 3.706532e+06
