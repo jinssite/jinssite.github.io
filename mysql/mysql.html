@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="../data-anal.css">
+  <title>Build MySQL Database</title>
+</head>
+<body>
+<div class="banner">
+  <img src="../anova.jpg" alt="banner" style="width: 100%;" />
+  <div class="banner-logo"><img src="../logo82.jpg" alt="logo" style="width: 82px; height: 82px;" /><span class="logo-text">Jin's Site</span></div>
+  <div class="banner-title">MySQL Database</div>
+</div>
+<div class="main-body">
+<h1><center>Build A MySQL Database</center></h1>
+<p>MySQL is a free and open-source relational database management system (RDBMS) and is used by many database-driven web applications. Its name is a combination of the co-founder Michael Widenius' daughter name "My" and the abbreviation of Structured Query Language "SQL." MySQL is currently owned by Oracle Corporation and is also available under a variety of commercial license options. Due to concerns over acquisition of MySQL by Oracle in 2009, some of the original developers of MySQL forked MySQL and created MariaDB, which is named after Widenius' younger daughter, Maria. MariaDB is intended to remain free and open source, and to maintain high compability with MySQL.</p>
+<p>In this article we will show you how to build a MySQL database on a Linux machine.</p>
+<p>Here are syntax notations we use to show the shell and mysql commands in this article:</p>
+<pre><code>$ mysql -u root
+mysql> \q
+$ </code></pre>
+<p>The "$" sign is the Linux shell prompt. The MySQL client program mysql can be used to interact with database server and make queries. The "mysql>" is the prompt of interactive mode. The "\q" (or "quit", or "exit") exits the interactive mode and brings us back to the Linux shell.</p>
+<h2>Install MySQL</h2>
+<p>Oracle provides many pre-packaged binary distributions of MySQL. For detail, please refer to <a href="https://dev.mysql.com/doc/mysql-installation-excerpt/8.0/en/">MySQL Installation Guide</a>. As an example, we will install MySQL version 8.0 to an Ubuntu machine from Ubuntu software repository.
+<pre><code>$ sudo apt-get update
+$ sudo apt-get install mysql-server</code></pre>
+We first update the package information and then install the MySQL server package.</p>
+<p>After the package is installed, we can check the version
+<pre><code>$ mysql -V
+mysql  Ver 8.0.35-0ubuntu0.20.04.1 for Linux on x86_64 ((Ubuntu))</code></pre>
+<p>The installation creates the default MySQL data directory /var/lib/mysql, where MySQL stores database files and server information:
+<pre><code>$ sudo ls /var/lib/mysql
+'#ib_16384_0.dblwr'   auto.cnf        ca-key.pem        debian-5.7.flag   mysql.ibd            server-cert.pem   undo_002
+'#ib_16384_1.dblwr'   binlog.000001   ca.pem            ib_buffer_pool    performance_schema   server-key.pem
+'#innodb_redo'        binlog.000002   client-cert.pem   ibdata1           private_key.pem      sys
+'#innodb_temp'        binlog.index    client-key.pem    mysql             public_key.pem       undo_001
+</code></pre>
+The directory and files in the directory belong to mysql, a user created by the installation. All these settings can be reconfigured from MySQL configuration file /etc/mysql/mysql.conf.d/mysqld.cnf or from command options of MySQL server program mysqld. The following diagram describes main files typically found in the data directory and the cross references to the MySQL standard databases:</p>
+<img src="MySQL Structure.jpg" style="width: 750px; max-width: 100%;" />
+<p>If, for some reason, you want to create your own data directory, you can use same server program mysqld with options --initialize or --initialize-insecure, and --datadir that points to your own data directory:
+<pre><code>$ sudo mysqld --initialize --user=mysql --datadir=/new_data_directory</code></pre>
+We use --user option to ensure database directories and files owned by the user mysql so the MySQL server will not have access issue when we run it. By default, the MySQL server is run under user mysql.</p>
+<p>The difference between options --initialize and --initialize-insecure is the initial password of database account 'root'@'localhost'. The former has a random password and the latter has no password. The first thing we should do after the installation is securing the access of this initial root account.</p>
+<h2>Configure MySQL</h2>
+<p>Let's start the MySQL server. Those familiar with Linux may expect to use command "systemctl start mysql" to start the MySQL service. However, if you use the Docker container from the codespace, systemd has overhead and is generally not run. In this case, we start the server from the service command
+<pre><code>$ sudo service mysql start
+ * Starting MySQL database server mysqld
+su: warning: cannot change directory to /nonexistent: No such file or directory</code></pre>
+The MySQL server starts but with a warning. This is because it tries to use mysql account to start the server and when we look at the entry of mysql user in /etc/passwd file which is created by MySQL installation
+<pre><code>mysql:x:106:108:MySQL Server,,,:<mark>/nonexistent</mark>:<mark>/bin/false</mark></code></pre>
+we can see the mysql user has /nonexistent as its home directory, which does not exist in the system and so the warning message. You can simply ignore the warning because the server is started properly or modify the home directory to an existing one e.g., to MySQL data directory
+<pre><code>$sudo service mysql stop
+$sudo usermod -d /var/lib/mysql/ mysql</code></pre>
+We have to stop the MySQL server before making the change. Then start the server again, there should be no warning.</p>
+<p>Note that the default shell of the mysql user is /bin/false, which does not exist. If you try to login as mysql user, it will fail. You must assign a valid shell if you want to login as this user.</p>
+<p>After the server started, the first thing we should do is securing the 'root'@'localhost' account. MySQL supports many authentication methods through plugins. In MySQL 8.0, the default plugin is caching_sha2_password, which uses SHA-256 authentication and server-side caching for better performance. The old MySQL version uses mysql_native_password which is based on the password hashing method. We can check the plugin used by the account from mysql.user table after we connect to the server.</p>
+<p>In the case that the account has no password, to connect to the server
+<pre><code>$ sudo mysql -u root</code></pre>
+If the option --initialize is used, look in the server error log (default at /var/log/mysql/error.log) for the random password:
+<pre><code>[Note] [MY-010454] [Server] A temporary password is generated for root@localhost: <mark>f-tS0d-;?T&6</mark></code></pre>
+Then use the random password to connect to the server (replace f-tS0d-;?T&6 with your random password)
+<pre><code>$ sudo mysql -u root -p
+Enter password:f-tS0d-;?T&6
+mysql> ALTER USER 'root'@'localhost' IDENTIFIED BY 'root-password';
+mysql> SELECT user, host, plugin FROM mysql.user;
++------------------+-----------+-----------------------+
+| user             | host      | plugin                |
++------------------+-----------+-----------------------+
+| mysql.infoschema | localhost | caching_sha2_password |
+| mysql.session    | localhost | caching_sha2_password |
+| mysql.sys        | localhost | caching_sha2_password |
+| root             | localhost | caching_sha2_password |
++------------------+-----------+-----------------------+
+4 rows in set (0.00 sec)</code></pre>
+We use ALTER USER command to change the password and also check the plugin used by each account. The authentication is by the password and it should not require the root privilege to run mysql. Let's try to connect to the server from a non-root user
+<pre><code>$ mysql -u root -p 
+Enter password: 
+ERROR 2002 (HY000): Can't connect to local MySQL server through socket '/var/run/mysqld/mysqld.sock' (13)</code></pre>
+The connection failed. This is because when the host is not specified, mysql command by default uses localhost, which uses local socket file /var/run/mysqld/mysqld.sock to connect to the server. However, the directory /var/run/mysqld is owned by mysql and is inaccessible by non-root user
+<pre><code>$ ls -ld /var/run/mysqld
+drwx------ 2 mysql mysql 4096 Jan  3 18:23 /var/run/mysqld</code></pre>
+We can try to use TCP/IP to connect to the server by providing an IP address as host
+<pre><code>mysql -h 127.0.0.1 -u root -p 
+Enter password:
+mysql> </code></pre>
+It works but the socket file is a little bit faster when we connect to the server locally as there is no TCP/IP-overhead. To use the socket file, we can change the directory permission
+<pre><code>$ sudo chmod 755 /var/run/mysqld
+$ mysql -u root -p
+Enter password:
+mysql> </code></pre>
+It works also.</p>
+<p>For secure reason, we may only want local root user to connect to the server as root account. In such case, we can use auth_socket plugin:
+<pre><code>mysql> INSTALL PLUGIN auth_socket SONAME 'auth_socket.so';
+mysql> ALTER USER 'root'@'localhost' IDENTIFIED WITH auth_socket;
+mysql> SELECT user, host, plugin FROM mysql.user WHERE user = 'root';
++------+-----------+-------------+
+| user | host      | plugin      |
++------+-----------+-------------+
+| root | localhost | auth_socket |
++------+-----------+-------------+
+1 row in set (0.00 sec)</code></pre>
+Here we change root to use the plugin auth_socket, which authenticates users through the Unix socket file. It restricts the users from connecting remotely, and also requires the socket user name matches the database user name or the name specified in the authentication_string field in mysql.user table. Users authenticated by the auth_socket do not need a password.
+<pre><code>$ mysql -u root
+ERROR 1698 (28000): Access denied for user 'root'@'localhost'
+$ sudo mysql -h 127.0.0.1 -u root
+ERROR 1698 (28000): Access denied for user 'root'@'localhost'
+$ sudo mysql -u root
+mysql> </code></pre>
+Now only local root user can connect to the server. The connection from either remote (through TCP/IP) or non-root user gets access denied error.</p>
+<p>The MySQL package provides a command line utility, mysql_secure_installation, that helps you implement several security recommendations
+<ul>
+<li>Install validate password component and set the level of password validation policy;</li>
+<li>Remove remote access of root account;</li>
+<li>Remove anonymous user account;</li>
+<li>Remove the test database.</li>
+</ul>
+It is a program you may also want to run and make the installation more secure.</p>
+<h2>Create Database</h2>
+<p>Let's see what databases we have after the installation:
+<pre><code>mysql> SHOW DATABASES;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
++--------------------+
+4 rows in set (0.00 sec)</code></pre>
+These are the four MySQL standard databases:
+<ul>
+<li>mysql - is the system database which contains information required by the MySQL server.</li>
+<li>information_schema - uses no database directory and provides ANSI-standard set of views for database metadata.</li>
+<li>performance_schema - provides Performance Schema for monitoring server execution at low level.</li>
+<li>sys - helps interpret data collected by Performance Schema.</li>
+</ul>
+To create our own database for our applications:
+<pre><code>mysql> CREATE DATABASE mydb;
+Query OK, 1 row affected (0.05 sec)
+
+mysql> SHOW DATABASES LIKE 'mydb';
++-----------------+
+| Database (mydb) |
++-----------------+
+| mydb            |
++-----------------+
+1 row in set (0.00 sec)
+
+mysql> USE mydb;
+Database changed
+mysql> SELECT DATABASE();
++------------+
+| DATABASE() |
++------------+
+| mydb       |
++------------+
+1 row in set (0.00 sec)</code></pre>
+We use USE command to switch to newly created database. The database creation creates a directory in MySQL data directory with same name:
+<pre><code>$ sudo ls /var/lib/mysql/mydb
+$ </code></pre>
+There is nothing in the diretcory and it is an empty database. Before we create any table in the database, it is usually a good idea to create a user for it and grant the permission:
+<pre><code>mysql> CREATE USER 'myuser'@'localhost' IDENTIFIED BY 'mypassword';
+Query OK, 0 rows affected (0.05 sec)
+
+mysql> GRANT ALL PRIVILEGES ON mydb.* TO 'myuser'@'localhost';
+Query OK, 0 rows affected (0.03 sec)</code></pre>
+The reason for doing this is to separate the database access for security purposes. We do not want to always use root account to access all the databases. Restricting permissions in this fasion is to ensure the security as strict as possible. Now we can use the new user to connect to the database:
+<pre><code>$ mysql -u myuser -p mydb
+Enter password:
+mysql> SELECT DATABASE();
++------------+
+| DATABASE() |
++------------+
+| mydb       |
++------------+
+1 row in set (0.00 sec)
+
+mysql> USE mysql;
+ERROR 1044 (42000): Access denied for user 'myuser'@'localhost' to database 'mysql'</code></pre>
+You can see an attempt to switch to another database failed because we only grant the user permission to access mydb database.</p>
+<h2>Create Tablespace</h2>
+<p>MySQL server uses pluggable storage engines to handle the SQL operations for different table types. To see which storage engines the server supported
+<pre><code>mysql> SHOW ENGINES;
++--------------------+---------+----------------------------------------------------------------+--------------+------+------------+
+| Engine             | Support | Comment                                                        | Transactions | XA   | Savepoints |
++--------------------+---------+----------------------------------------------------------------+--------------+------+------------+
+| ARCHIVE            | YES     | Archive storage engine                                         | NO           | NO   | NO         |
+| BLACKHOLE          | YES     | /dev/null storage engine (anything you write to it disappears) | NO           | NO   | NO         |
+| MRG_MYISAM         | YES     | Collection of identical MyISAM tables                          | NO           | NO   | NO         |
+| FEDERATED          | NO      | Federated MySQL storage engine                                 | NULL         | NULL | NULL       |
+| MyISAM             | YES     | MyISAM storage engine                                          | NO           | NO   | NO         |
+| PERFORMANCE_SCHEMA | YES     | Performance Schema                                             | NO           | NO   | NO         |
+| InnoDB             | DEFAULT | Supports transactions, row-level locking, and foreign keys     | YES          | YES  | YES        |
+| MEMORY             | YES     | Hash based, stored in memory, useful for temporary tables      | NO           | NO   | NO         |
+| CSV                | YES     | CSV storage engine                                             | NO           | NO   | NO         |
++--------------------+---------+----------------------------------------------------------------+--------------+------+------------+
+9 rows in set (0.01 sec)</code></pre>
+Two well-known types of engines are MyISAM and InnoDB. InnoDB is the default storage engine for MySQL version 5.5 and above. It replaced the old default engine MyISAM. InnoDB is a general-purpose storage engine and it is recommended using InnoDB for tables except for specialized use cases.</p>
+<p>InnoDB stores its tables and indexes in a tablespace. A tablespace is a logical structure associated with data files and logical storage used as a container for tables and indexes. To see MySQL tablespaces and data files in which the tablespace data is stored
+<pre><code>mysql> SELECT file_id, file_name, file_type, tablespace_name, engine FROM information_schema.files;
++------------+----------------------+------------+------------------+--------+
+| FILE_ID    | FILE_NAME            | FILE_TYPE  | TABLESPACE_NAME  | ENGINE |
++------------+----------------------+------------+------------------+--------+
+| 4294967294 | ./mysql.ibd          | TABLESPACE | mysql            | InnoDB |
+|          0 | ./ibdata1            | TABLESPACE | innodb_system    | InnoDB |
+| 4294967293 | ./ibtmp1             | TEMPORARY  | innodb_temporary | InnoDB |
+| 4294967279 | ./undo_001           | UNDO LOG   | innodb_undo_001  | InnoDB |
+| 4294967278 | ./undo_002           | UNDO LOG   | innodb_undo_002  | InnoDB |
+|          1 | ./sys/sys_config.ibd | TABLESPACE | sys/sys_config   | InnoDB |
++------------+----------------------+------------+------------------+--------+
+6 rows in set (0.02 sec)</code></pre>
+InnoDB uses tablespace for many purpose. It stores undo log in Undo tablespaces (innodb_undo_001 and innodb_undo_002), temporary tables in temporary tablespace (innodb_temporary), change buffer in system tablespace (innodb_system). System tablespace may also contain table and index data if they are not created in file-per-table or general tablespaces.</p>
+<p>A general tablespace is similar to system tablespace, which is a shared tablespace and can store multiple tables. The shared tablespace does not shrink in size. The free space from truncating or dropping tables stored in a shared tablespace can only be used for new data. Space is not released back to the file system. The tablespace mysql is a general tablespace and contains data dictionary tables that store database object metadata, and system tables used for other operational purposes.</p>
+<p>A file-per-table tablespace contains data and indexes for a single table, and is stored in a single file. Its advantage over shared tablespace is that disk space is returned to the file system after truncating or dropping a table created in the tablespace. However, it has disadvantage that the server has to open file handle per table and requires more file descriptors. It may consume more memory since the server keeps tablespace metadata in memory for lifetime of tablespace, same number of tables in fewer general tablespace consumes less memory. The tablespace sys/sys_config is a file-per-table tablespace and contains a single table sys_config.</p>
+<p>The file-per-table tablespace is automatically created when its single table is created. We have to manually create the general tablespace.
+<pre><code>mysql> CREATE TABLESPACE mytblspc ADD DATAFILE 'mytblspc.ibd' Engine = InnoDB;</code></pre>
+This creates the tablespace file in the data directory:
+<pre><code>$ sudo ls -l /var/lib/mysql/mytblspc.ibd
+-rw-r----- 1 mysql mysql 114688 Jan  6 03:35 /var/lib/mysql/mytblspc.ibd</code></pre>
+The file can be created in a directory outside the data directory. That directory must exist and must be known to InnoDB. To avoid conflicts with file-per-table tablespaces, the directory cannot be a subdirectory under the data directory.</p>
+<p>Let's check from the database
+<pre><code>mysql> SELECT space, name, space_type, file_size FROM information_schema.innodb_tablespaces;
++------------+------------------+------------+-----------+
+| space      | name             | space_type | file_size |
++------------+------------------+------------+-----------+
+| 4294967294 | mysql            | General    |  26214400 |
+| 4294967293 | innodb_temporary | System     |  12582912 |
+| 4294967279 | innodb_undo_001  | Undo       |  16777216 |
+| 4294967278 | innodb_undo_002  | Undo       |  16777216 |
+|          1 | sys/sys_config   | Single     |    114688 |
+|          4 | mytblspc         | General    |    114688 |
++------------+------------------+------------+-----------+
+6 rows in set (0.00 sec)</code></pre>
+We can see tablespace mytblspc is created with space ID 4 (same as FILE_ID in information_schema.files table) and it is a general tablespace. In the next article, we will create table and index in this tablespace.</p>
+<footer>
+<p>&copy; 2024 Jin's Site. All Rights Reserved. <a href="https://jinssite.github.io">https://jinssite.github.io</a></p>
+</footer>
+<div>
+<a href="mysql-tables.html" class="page-next">Next &gt;</a>
+</div>
+</div>
+</body>
+</html>

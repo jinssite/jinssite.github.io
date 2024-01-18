@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="../data-anal.css">
+  <title>Use MySQL Database</title>
+</head>
+<body>
+<div class="banner">
+  <img src="../anova.jpg" alt="banner" style="width: 100%;" />
+  <div class="banner-logo"><img src="../logo82.jpg" alt="logo" style="width: 82px; height: 82px;" /><span class="logo-text">Jin's Site</span></div>
+  <div class="banner-title">Use Database</div>
+</div>
+<div class="main-body">
+<h1><center>Use MySQL Database</center></h1>
+<p>In previous article, we build a database and a general tablespace. In this article, we will use them to create tables and indexes for storing stock data. Here is the SQL script:
+<pre><code>$ cat create_stock_tables.sql
+CREATE TABLE stocks_symbol (
+    id INTEGER UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    symbol VARCHAR(255) NOT NULL,
+    last_date DATE,
+    CONSTRAINT UNIQUE INDEX symbol_index (symbol)
+) TABLESPACE mytblspc;
+
+CREATE TABLE stocks_daily (
+    id INTEGER UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    symbol VARCHAR(255) NOT NULL,
+    date DATE NOT NULL,
+    open REAL NOT NULL,
+    close REAL NOT NULL,
+    high REAL NOT NULL,
+    low REAL NOT NULL,
+    volume REAL NOT NULL,
+    CONSTRAINT UNIQUE INDEX daily_index (symbol, date),
+    FOREIGN KEY (symbol)
+        REFERENCES stocks_symbol (symbol)
+            ON DELETE CASCADE
+);</code></pre>
+The table stocks_symbol is used to store stock symbol list. The last_date field in the table is the last date on which we have queried the data and is used as the starting date when we update the tables with new data. The table stock_daily stores the daily stock information. In both tables, we add an interger id as the primary key.</p>
+<p>Note that we use an integer id field as primary key for both tables. It has advantage to use a short primary key in InnoDB tables because the secondary indexes (the indexes other than the primary index) store primary key columns for searching the record. The longer the primary key, the more space used by the secondary indexes. In our tables, we can use the unique index as primary key since it is the only index in the table. However, the current table design is better for in case when we need to add more indexes to the table.</p>
+<p>The table stocks_symbol is created in the general tablspace mytblspc. The table stocks_daily could be large and we choose to create it in file-per-table tablespace. By default, InnoDB creates tables in file-per-table tablespace and this is controlled by the global variable innodb_file_per_table. To make sure the table is created in file-per-table tablespace, you can use command "SET GLOBAL innodb_file_per_table=ON;" or add "TABLESPACE innodb_file_per_table" at the end of CREATE TABLE statement.</p>
+<p>To run the script, we can either pass it to mysql command
+<pre><code>$ mysql -u myuser -p mydb < create_stock_tables.sql</code></pre>
+or, source it inside mysql environment (remember to connect to the database we created)
+<pre><code>$ mysql -u myuser -p mydb
+mysql> source create_stock_tables.sql</code></pre>
+Let's check the tables and indexes we created
+<pre><code>mysql> SHOW TABLES;
++----------------+
+| Tables_in_mydb |
++----------------+
+| stocks_daily   |
+| stocks_symbol  |
++----------------+
+2 rows in set (0.00 sec)
+
+mysql> SHOW INDEXES FROM stocks_symbol;
++---------------+------------+--------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+---------+------------+
+| Table         | Non_unique | Key_name     | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment | Visible | Expression |
++---------------+------------+--------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+---------+------------+
+| stocks_symbol |          0 | PRIMARY      |            1 | id          | A         |           0 |     NULL |   NULL |      | BTREE      |         |               | YES     | NULL       |
+| stocks_symbol |          0 | symbol_index |            1 | symbol      | A         |           0 |     NULL |   NULL |      | BTREE      |         |               | YES     | NULL       |
++---------------+------------+--------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+---------+------------+
+2 rows in set (0.02 sec)
+
+mysql> SHOW INDEXES FROM stocks_daily;
++--------------+------------+-------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+---------+------------+
+| Table        | Non_unique | Key_name    | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment | Visible | Expression |
++--------------+------------+-------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+---------+------------+
+| stocks_daily |          0 | PRIMARY     |            1 | id          | A         |           0 |     NULL |   NULL |      | BTREE      |         |               | YES     | NULL       |
+| stocks_daily |          0 | daily_index |            1 | symbol      | A         |           0 |     NULL |   NULL |      | BTREE      |         |               | YES     | NULL       |
+| stocks_daily |          0 | daily_index |            2 | date        | A         |           0 |     NULL |   NULL |      | BTREE      |         |               | YES     | NULL       |
++--------------+------------+-------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+---------+------------+
+3 rows in set (0.03 sec)</code></pre>
+and make sure the tables are created in the correct tablespaces (Note: You need to switch to root account to run the following. The myuser account does not have permission to access information_schema.innodb_tables and information_schema.files)
+<pre><code>mysql> select name, tablespace_name, space_type from information_schema.innodb_tables join information_schema.files on space = file_id where name like 'mydb%';
++--------------------+-------------------+------------+
+| name               | TABLESPACE_NAME   | space_type |
++--------------------+-------------------+------------+
+| mydb/stocks_daily  | mydb/stocks_daily | Single     |
+| mydb/stocks_symbol | mytblspc          | General    |
++--------------------+-------------------+------------+
+2 rows in set (0.00 sec)</code></pre>
+Note that the name field is shown as "database/table." The table stocks_symbol uses general tablespace mytblspc. The table stock_daily is in its file-per-table tablespace and the data file, by default, is created inside the database subdirectory under MySQL data directory.
+<pre><code>$ sudo ls -l /var/lib/mysql/mydb
+total 128
+-rw-r----- 1 mysql mysql 131072 Jan 12 18:39 stocks_daily.ibd</code></pre>
+We will use a Python script to fill the tables. Python has various database drivers for MySQL. We will use MySQL Connector/Python, which is developed by MySQL group at Oracle and written entirely in Python. If you do not have Connector/Python installed, you can install it like
+<pre><code>$ pip install mysql-connector-python</code></pre>
+Here is the Python script:
+<pre><code>import mysql.connector
+from urllib.request import urlopen
+import csv
+import sys
+
+def retrieve_symbols(conn):
+    """
+    Function to retrieve symbol list from database table stocks_symbol
+    """
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT symbol from stocks_symbol")
+        return [field[0] for field in cur.fetchall()]
+    except (mysql.connector.Error):
+        raise
+    finally:
+        cur.close()
+
+def load_stock_data(symbol, conn):
+    """
+    Function to load the stock data retrieved from Yahoo Finance API to database
+    """
+    cur = conn.cursor()
+    curprep = conn.cursor(prepared = True)
+    try:
+        # Check if the symbol already exists
+        cur.execute("SET TIME_ZONE='Us/Eastern'")
+        cur.execute("SELECT UNIX_TIMESTAMP(last_date), UNIX_TIMESTAMP() FROM stocks_symbol WHERE symbol = '%s'" %(symbol))
+        row = cur.fetchone()
+        if row:
+            # If the symbol exists, query the data starting from last_date to current time and delete the record at last_date for update
+            url = f'https://query1.finance.yahoo.com/v7/finance/download/{symbol}?period1={row[0]}&period2={row[1]}&interval=1d'
+        else:
+            # If the symbol does not exists, insert the symbol and query data within 1 year
+            cur.execute("INSERT INTO stocks_symbol (symbol) VALUES ('%s')" %(symbol))
+            url = f'https://query1.finance.yahoo.com/v7/finance/download/{symbol}?range=1y&interval=1d'
+        with urlopen(url) as response:
+            line = response.readline()
+            if line:
+                # The first line is header. Note: urlopen returns bytestream, need to convert to string before passing to csv reader
+                row = next(csv.reader([line.decode('utf-8')]))
+                header = {row[i] : i for i in range(len(row))}
+                # Check if all required fields exist
+                for field in ('Date', 'Open', 'Close', 'High', 'Low', 'Volume'):
+                    if field not in header:
+                        raise Exception(f"Missing required field {field} in stock data.")
+                stmt = """INSERT INTO stocks_daily (symbol, date, open, close, high, low, volume) VALUES (%s, %s, %s, %s, %s, %s, %s) AS new
+                          ON DUPLICATE KEY UPDATE open = new.open, close = new.close, high = new.high, low = new.low, volume = new.volume"""
+                while True:
+                    line = response.readline()
+                    if not line:
+                        break
+                    row = next(csv.reader([line.decode('utf-8')]))
+                    curprep.execute(stmt, (symbol, row[header['Date']], row[header['Open']], row[header['Close']],
+                                           row[header['High']], row[header['Low']], row[header['Volume']]))
+                if row[header['Date']] == 'Date':
+                    # If there is no data, rollback any changes
+                    conn.rollback()
+                else:
+                    # Use the last record to update last_data
+                    cur.execute(f"UPDATE stocks_symbol SET last_date = '{row[header['Date']]}' WHERE symbol = '{symbol}'")
+                    conn.commit()
+    except (mysql.connector.Error, Exception):
+        conn.rollback()
+        raise
+    finally:
+        curprep.close()
+        cur.close()
+
+def main():
+    """
+    Main function to load stock data into MySQL database
+    """
+    config = {"host": "localhost", "user": "myuser", "password": "mypassword", "database": "mydb"}
+
+    try:
+        conn = mysql.connector.connect(**config)
+    except mysql.connector.Error as err:
+        print("Error: Cannot connect to database: ", err)
+        sys.exit(1)
+
+    symbols = sys.argv[1:]
+    if len(symbols) == 0:
+        symbols = retrieve_symbols(conn)
+
+    for symbol in symbols:
+        try:
+            load_stock_data(symbol, conn)
+        except (mysql.connector.Error, Exception) as err:
+            print(f"Error: Load data for symbol {symbol} failed -", err)
+
+    conn.close()
+
+if __name__ == "__main__":
+    main()</code></pre>
+The script uses Yahoo Finance API to retrieve stock data in CSV format. It retrieves 1-year of stock data for the new added symbol or updates its data to the current. To have the correct retrieving time, in the script we set the time zone to US/Eastern, which is the trading time of US stocks. MySQL stores time zone information in mysql system database. MySQL installation creates time zone tables but does not load the information. It provides a program, mysql_tzinfo_to_sql, to populate the time zone tables from system zoninfo database (a directory with files describing time zones). On Linux, these files are usually located at /usr/share/zoneinfo. To load the time zone tables
+<pre><code>$ mysql_tzinfo_to_sql /usr/share/zoneinfo | sudo mysql -u root mysql</code></pre>
+We create two kinds of cursors in the script. The normal cursor "cur" is used for most SQL statements. We use prepared cursor "curprep" for daily data insertion. This saves time from parsing SQL statement each time when there are many records inserted into the table (e.g., when inserting 1-year of data). There is some performance improvement we could do. Note that we call curprep.execute() to insert row by row into stocks_daily table. This could cause a lot of roundtrip networking to the database server. To reduce the number of round trips, we can read multiple lines from CSV data and use executemany() to insert them in one call.</p>
+<p>Let's use the script to get the stock data of Google:
+<pre><code>$ python ./load_stock_data.py GOOG
+$ mysql -u myuser -p mydb
+Enter password:
+mysql> SELECT * FROM stocks_daily WHERE symbol = 'GOOG';
++-----+--------+------------+------------+------------+------------+------------+----------+
+| id  | symbol | date       | open       | close      | high       | low        | volume   |
++-----+--------+------------+------------+------------+------------+------------+----------+
+|   1 | GOOG   | 2023-01-17 |  92.779999 |  92.160004 |  92.970001 |  90.839996 | 22935800 |
+|   2 | GOOG   | 2023-01-18 |  92.940002 |  91.779999 |  93.587997 |  91.400002 | 19641600 |
+|   3 | GOOG   | 2023-01-19 |  91.389999 |  93.910004 |  94.400002 |  91.379997 | 28707700 |
+...
+| 250 | GOOG   | 2024-01-12 | 144.339996 | 144.240005 | 144.740005 | 143.360001 | 13995200 |
+| 251 | GOOG   | 2024-01-16 | 143.429993 | 144.080002 | 145.839996 |    143.056 | 19190400 |
+| 252 | GOOG   | 2024-01-17 | 142.910004 | 141.725006 | 143.410004 | 140.509995 |  4991574 |
++-----+--------+------------+------------+------------+------------+------------+----------+
+252 rows in set (0.01 sec)</code></pre>
+We have retrieved 1-year of Google stock data plus current day's data, total 252 rows. Since we are running the script during the trading hours, we can run the script one more time to update the data:
+<pre><code>$ python ./load_stock_data.py
+mysql> SELECT * FROM stocks_daily WHERE symbol = 'GOOG' ORDER BY date DESC LIMIT 3;
++-----+--------+------------+------------+------------+------------+------------+----------+
+| id  | symbol | date       | open       | close      | high       | low        | volume   |
++-----+--------+------------+------------+------------+------------+------------+----------+
+| 253 | GOOG   | 2024-01-17 | 142.910004 | 141.919998 | 143.410004 | 140.509995 |  5234529 |
+| 251 | GOOG   | 2024-01-16 | 143.429993 | 144.080002 | 145.839996 |    143.056 | 19190400 |
+| 250 | GOOG   | 2024-01-12 | 144.339996 | 144.240005 | 144.740005 | 143.360001 | 13995200 |
++-----+--------+------------+------------+------------+------------+------------+----------+
+3 rows in set (0.00 sec)</code></pre>
+We can see the data in the current day is changed but other two days remain same.</p>
+<footer>
+<p>&copy; 2024 Jin's Site. All Rights Reserved. <a href="https://jinssite.github.io">https://jinssite.github.io</a></p>
+</footer>
+<div>
+<a href="mysql.html" class="page-prev">&lt; Previous</a>
+</div>
+</div>
+</body>
+</html>
